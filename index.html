@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>漕河泾B座物种起源测试</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0c;
+            --text-main: #e0e2e5;
+            --text-dark: #6b7280;
+            --accent-green: #00ffa3;
+            --accent-orange: #ff5c00;
+            --accent-pink: #ff0055;
+            --border-color: #333;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow: hidden;
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+        }
+        /* 扫描线背景 */
+        body::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+        
+        .container { position: relative; width: 100%; height: 100%; padding: 20px; z-index: 10; display: flex; flex-direction: column; }
+        .hidden { display: none !important; }
+        
+        /* 页面切换动画 */
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+        /* 答题区动态切换包装器 */
+        #q-wrapper {
+            transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            opacity: 1; transform: translateX(0); flex: 1; display: flex; flex-direction: column;
+        }
+
+        /* 首页样式 */
+        #landing { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .title-box { border: 1px solid var(--accent-green); padding: 20px; position: relative; margin-bottom: 30px; background: rgba(0,255,163,0.05); }
+        .title-box::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 20px; height: 20px; border-bottom: 3px solid var(--accent-green); border-right: 3px solid var(--accent-green); }
+        h1 { font-size: 1.5rem; font-weight: 900; letter-spacing: 2px; color: #fff; margin-bottom: 10px; }
+        .sub-title { color: var(--accent-green); font-family: monospace; font-size: 0.9rem; }
+        .desc { font-size: 0.85rem; color: var(--text-dark); line-height: 1.6; text-align: left; margin: 0 10px 40px; font-family: monospace;}
+        
+        .btn {
+            background: transparent; color: var(--accent-green); border: 1px solid var(--accent-green);
+            padding: 15px 30px; font-size: 1.1rem; font-weight: bold; font-family: monospace;
+            text-transform: uppercase; letter-spacing: 2px; cursor: pointer; position: relative;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            transition: all 0.2s;
+        }
+        .btn:active { background: var(--accent-green); color: var(--bg-color); transform: scale(0.95); }
+
+        /* 答题页样式 */
+        #quiz { flex: 1; display: flex; flex-direction: column; }
+        .progress-bar { width: 100%; height: 4px; background: #222; margin-bottom: 20px; position: relative; overflow: hidden;}
+        .progress-fill { height: 100%; background: var(--accent-green); width: 0%; transition: width 0.3s, background-color 0.3s; }
+        .q-header { display: flex; justify-content: space-between; align-items: center; font-family: monospace; color: var(--text-dark); font-size: 0.8rem; margin-bottom: 20px; }
+        
+        /* 返回按钮 */
+        .btn-back { color: var(--text-dark); background: none; border: 1px solid #333; padding: 4px 10px; border-radius: 4px; font-family: monospace; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; opacity: 0;}
+        .btn-back.visible { opacity: 1; }
+        .btn-back:active { background: #333; color: #fff; }
+
+        .q-text { font-size: 1.1rem; line-height: 1.6; font-weight: bold; margin-bottom: 30px; min-height: 100px; }
+        .options { display: flex; flex-direction: column; gap: 12px; }
+        .option {
+            background: #111; border: 1px solid #333; padding: 15px; border-radius: 4px;
+            color: #ccc; font-size: 0.95rem; line-height: 1.5; cursor: pointer; transition: all 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .option:active { border-color: var(--accent-green); background: rgba(0,255,163,0.1); transform: scale(0.98); color: #fff;}
+
+        /* Loading页样式 */
+        #loading { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: monospace;}
+        .loader-cube { width: 50px; height: 50px; border: 2px solid var(--accent-orange); animation: rotate 2s linear infinite; margin-bottom: 30px; }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        .log-box { width: 100%; height: 150px; overflow: hidden; color: var(--accent-orange); font-size: 0.8rem; line-height: 1.8; opacity: 0.8; }
+
+        /* 结果页样式 */
+        #result { flex: 1; overflow-y: auto; padding-bottom: 40px;}
+        .id-card {
+            background: linear-gradient(135deg, #1a1c23 0%, #0d0d0d 100%); border: 1px solid #333;
+            border-radius: 8px; padding: 25px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative; overflow: hidden; margin-top: 10px;
+        }
+        .id-card::before { content: 'EMPLOYEE ID'; position: absolute; top: -10px; right: -10px; font-size: 4rem; font-weight: 900; color: rgba(255,255,255,0.02); z-index: 0; }
+        .res-type { font-size: 0.9rem; color: var(--accent-green); font-family: monospace; margin-bottom: 5px; position: relative; z-index: 1;}
+        .res-title { font-size: 1.8rem; font-weight: 900; color: #fff; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.2); position: relative; z-index: 1;}
+        
+        .radar-container { width: 100%; display: flex; justify-content: center; margin: 20px 0; position: relative; z-index: 1;}
+        svg { max-width: 100%; height: auto; }
+        
+        .res-desc { background: rgba(255,255,255,0.05); padding: 15px; border-left: 3px solid var(--accent-green); font-size: 0.9rem; line-height: 1.6; margin-bottom: 15px; position: relative; z-index: 1;}
+        .res-stats { display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; position: relative; z-index: 1;}
+        .stat-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding-bottom: 5px;}
+        .stat-val { color: var(--accent-green); font-weight: bold;}
+
+        .footer { position: fixed; bottom: 10px; width: 100%; text-align: center; font-size: 0.6rem; color: #555; font-family: monospace; left: 0; z-index: 0; pointer-events: none;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="landing">
+            <div class="title-box">
+                <h1>漕河泾B座物种起源</h1>
+                <div class="sub-title">打工人精神状态及生态位图鉴</div>
+            </div>
+            <div class="desc">
+                > 警告：本系统检测到您正处于高压打工辐射区。<br>
+                > 这里没有绝对的对错，只有薛定谔的Bug和五彩斑斓的黑。<br>
+                > 接下来，系统将通过 36道 极度拟真的职场极端场景题，对您的底层工作逻辑和精神状态进行深度扫描。<br>
+                > 请抛弃伪装，遵从您疲惫的直觉进行选择。找出您在这个草台班子里的真实生态位。
+            </div>
+            <button class="btn" onclick="startQuiz()">[ INITIATE CHECK / 开始理智检测 ]</button>
+        </div>
+
+        <div id="quiz" class="hidden">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="q-header">
+                <button class="btn-back" id="btn-back" onclick="goBack()">◄ 返回</button>
+                <span id="q-counter">SYS.TEST [01/36]</span>
+            </div>
+            <div id="q-wrapper">
+                <div class="q-text" id="q-text">题目加载中...</div>
+                <div class="options" id="options-container">
+                    </div>
+            </div>
+        </div>
+
+        <div id="loading" class="hidden">
+            <div class="loader-cube"></div>
+            <div class="log-box" id="log-box"></div>
+        </div>
+
+        <div id="result" class="hidden">
+            <div class="id-card fade-in">
+                <div class="res-type" id="r-code">[ O-L-R-E ]</div>
+                <div class="res-title" id="r-title">暴躁型对齐战神</div>
+                
+                <div class="radar-container" id="radar-container">
+                    </div>
+
+                <div class="res-desc" id="r-desc">
+                    这里是描述占位符
+                </div>
+                
+                <div class="res-stats">
+                    <div class="stat-item"><span>⚔️ 天敌克星</span><span class="stat-val" id="r-enemy">天敌占位符</span></div>
+                    <div class="stat-item"><span>🤝 共生伙伴</span><span class="stat-val" id="r-partner">伙伴占位符</span></div>
+                    <div class="stat-item"><span>🎁 击败掉落</span><span class="stat-val" id="r-drop">掉落占位符</span></div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" style="padding: 10px 20px; font-size: 0.9rem;" onclick="location.reload()">[ 重启终端 / RETRY ]</button>
+                <div style="margin-top: 15px; font-size: 0.8rem; color:#888;">长按卡片可保存截图分享</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">// 制作人：森空岛@禁闭 · 纯属娱乐 · 严禁跨部门执法 //</div>
+
+<script>
+// --- 数据区域：通用版36道题录入 ---
+const questions = [
+    // 维度1：O vs S (1-9)
+    { d:1, t:"工作中发现跨部门同事少交了一个重要文件，你的第一反应是：", o:[{x:'A',t:"立刻在大群里艾特对方：哈喽辛苦发一下哦~"},{x:'B',t:"私聊对方提醒，如果不回再想别的办法"},{x:'C',t:"默默点个驳回切回B站，非必要不开麦"}] },
+    { d:1, t:"组内开会讨论新方案，大家陷入了长达一分钟的可怕死寂，此时你会：", o:[{x:'A',t:"主动跳出来：来来来，我先抛砖引玉说两句"},{x:'B',t:"战术性低头喝水，跟着旁边的大佬频频点头"},{x:'C',t:"紧盯屏幕盲打，假装正回复极其紧急的消息"}] },
+    { d:1, t:"在一楼等电梯时，恰好碰到了平时只有线上交流的同事，你会：", o:[{x:'A',t:"主动出击：哎早啊！上次那个事咱们口头对一下"},{x:'B',t:"微笑点头致意，然后立刻掏出手机假装刷朋友圈"},{x:'C',t:"瞬间低头想退回地铁站，宁可迟到绝不产生社交"}] },
+    { d:1, t:"当你需要向领导汇报自己这个月的辛苦产出时，你的策略是：", o:[{x:'A',t:"做精美PPT把日常工作包装成拯救世界的壮举"},{x:'B',t:"按标准模板中规中矩地罗列完成条目"},{x:'C',t:"甩过去一个毫无排版的文件包：做完的都在里面了"}] },
+    { d:1, t:"遇到卡壳的难题，你的求助方式通常是：", o:[{x:'A',t:"直接滑着椅子冲到隔壁工位连比划带说"},{x:'B',t:"整理截图在飞书上礼貌询问对方是否有空看"},{x:'C',t:"宁可像无头苍蝇一样自己搜，也绝不开口问旁边人"}] },
+    { d:1, t:"工作群里有人发了一只极其搞笑的梗图，你的表现是：", o:[{x:'A',t:"立刻甩出最炸裂的表情包跟上，开启斗图模式"},{x:'B',t:"顺手点个“+1”或者点个赞"},{x:'C',t:"内心觉得好笑嘴角上扬，但坚决不在群里打一个字"}] },
+    { d:1, t:"当你负责的项目大受好评，全组在群里艾特你夸奖时，你会：", o:[{x:'A',t:"疯狂发表情包：都是大家带飞！今晚我请喝奶茶"},{x:'B',t:"发一个“谢谢大家共同努力”的官方套话"},{x:'C',t:"假装没看见潜水，偷偷截图发给自己的小号"}] },
+    { d:1, t:"被误拉进了一个与你完全无关的几百人项目大群，你会：", o:[{x:'A',t:"发表情包：走错片场啦大佬们发财，然后高调退群"},{x:'B',t:"悄悄点击“退出群聊”，不带走一片云彩"},{x:'C',t:"开启消息免打扰留在群里，当作无聊时的吃瓜素材库"}] },
+    { d:1, t:"如果公司允许你定制工位的名牌，你最希望上面写什么？", o:[{x:'A',t:"交际花 / 宣发大喇叭 / 资源拉通带师"},{x:'B',t:"规规矩矩写上自己的花名和所在部门"},{x:'C',t:"别理我，烦"}] },
+
+    // 维度2：L vs V (10-18)
+    { d:2, t:"你的工作软件突然卡死转起了死亡小彩球，你的排查方式是：", o:[{x:'A',t:"打开任务管理器看内存占用分析导致卡死的进程"},{x:'B',t:"狂点鼠标左键十次，叹口气准备强制关闭"},{x:'C',t:"双手离开键盘默念别崩，坚信过会儿自己能缓过来"}] },
+    { d:2, t:"中午在公司附近决定吃什么，你的判断标准是：", o:[{x:'A',t:"打开点评，综合距离、排队、评分选出最优解"},{x:'B',t:"同事吃啥我吃啥，跟着大部队走就对了"},{x:'C',t:"讲究缘分，出门看到红灯吃面看到绿灯吃汉堡"}] },
+    { d:2, t:"全公司的网突然断了陷入一片混乱，你在想什么？", o:[{x:'A',t:"估计是交换机出问题或外部光缆挖断，去看公告"},{x:'B',t:"趁机去楼下抽根烟/买杯咖啡，带薪散步"},{x:'C',t:"肯定是服务器没供奉原味鸡导致神明发怒了"}] },
+    { d:2, t:"面对一个极为庞大且混乱的新任务，你的起手式是：", o:[{x:'A',t:"打开思维导图把任务拆解成5个阶段20个子任务"},{x:'B',t:"先找找以前有没有类似的项目模板可以套用"},{x:'C',t:"凭直觉开干，车到山前必有路，做不出换思路"}] },
+    { d:2, t:"你的工作文件命名和归档习惯，通常是：", o:[{x:'A',t:"时间_项目_部门_版本号，层级分明强迫症福音"},{x:'B',t:"建几个大文件夹随便往里扔"},{x:'C',t:"新建文件夹/打死也不改了.zip，找文件全靠保佑"}] },
+    { d:2, t:"看待市面上突然爆火的一款游戏/影视产品，你倾向于：", o:[{x:'A',t:"扒它的受众画像、留存数据、转化率用客观指标说话"},{x:'B',t:"看看网上大V的分析视频，听听别人怎么说"},{x:'C',t:"去社区感受梗的传播度，这玩意能火纯靠命"}] },
+    { d:2, t:"接手了前同事留下的一堆极其混乱的交接文档，你会：", o:[{x:'A',t:"溯源梳理逻辑，如果实在离谱就花时间全重构"},{x:'B',t:"挑自己能看懂的部分看，看不懂的先搁置"},{x:'C',t:"敬畏屎山！既然它运转三年没出事说明是承重墙别碰"}] },
+    { d:2, t:"如果你要在工位上摆一个“镇桌之宝”，你会选择：", o:[{x:'A',t:"一本极其厚重的行业专业书，显示硬核底蕴"},{x:'B',t:"公司发的周年庆周边或者各种盲盒公仔"},{x:'C',t:"贴水逆退散符咒，或摆个赛博木鱼超度离谱需求"}] },
+    { d:2, t:"当你的方案/产出一次性无修改通过时，你觉得原因是：", o:[{x:'A',t:"我完美的逻辑闭环、扎实的基本功和精准把控"},{x:'B',t:"需求本来也不复杂，正常发挥而已"},{x:'C',t:"感谢泰拉大陆诸神庇佑，老板今天心情真好"}] },
+
+    // 维度3：R vs C (19-27)
+    { d:3, t:"周五晚18:30准备下班去吃火锅，领导突然说有个急事，你会：", o:[{x:'A',t:"血压拉满重重叹气砸鼠标，在心里暗杀领导八百遍"},{x:'B',t:"默默跟朋友取消火锅局，点个外卖开始加班"},{x:'C',t:"心跳毫无波动，先看集番剧等到9点再慢悠悠干"}] },
+    { d:3, t:"辛苦熬夜做的心血之作在评审会被批得一无是处，内心状态：", o:[{x:'A',t:"怒火中烧觉得他们不懂审美业务，想直接辩论"},{x:'B',t:"有点沮丧，默默记下意见打算周末加班调"},{x:'C',t:"改就改呗反正是带薪修改，钱给够画五彩斑斓的黑都行"}] },
+    { d:3, t:"同事不小心打翻水泼在了你的键盘或重要文件上，第一反应：", o:[{x:'A',t:"当场裂开抱着键盘哀嚎，情绪激动要求赔偿"},{x:'B',t:"赶紧拿纸擦，心里无语但也只能说没事没事"},{x:'C',t:"平静抽出一张纸：哦正好想换键盘了谢谢给我正当理由"}] },
+    { d:3, t:"全神贯注处理极其烧脑的工作，旁边同事大声问你中午吃啥：", o:[{x:'A',t:"思路被打断瞬间极其暴躁：没看忙着呢吗别烦我！"},{x:'B',t:"稍微皱眉回答一句然后赶紧重新找状态"},{x:'C',t:"顺势放下工作，甚至站起来跟他热烈探讨外卖选择"}] },
+    { d:3, t:"直属领导突然在群里艾特你，只发了一个“？”，此时你会：", o:[{x:'A',t:"肾上腺素狂飙疯狂翻聊天记录反省是不是捅篓子了"},{x:'B',t:"马上回复怎么了老板，手心微微出汗"},{x:'C',t:"隔十分钟回复一个“？”回去。打工人玩什么心理战"}] },
+    { d:3, t:"产出被隔壁部门退回第5次，理由都是吹毛求疵的瑕疵，你会：", o:[{x:'A',t:"冲到对方工位准备进行为什么非要改这一下的肉搏"},{x:'B',t:"咬牙切齿地在心里骂娘，但表面还是老实去改了"},{x:'C',t:"觉得对方真是严谨好同志，把排期顺势拉长三天"}] },
+    { d:3, t:"旁边工位同事大声咀嚼薯片时不时发出狂笑，你会：", o:[{x:'A',t:"忍无可忍转过头狠狠瞪他或者直接让他小点声"},{x:'B',t:"默默戴上降噪耳机把音乐开到最大试图盖过"},{x:'C',t:"丝毫不受影响，甚至顺手从他桌上摸走两片塞嘴里"}] },
+    { d:3, t:"被通知这个月的奖金/绩效评级比预期的低，你的反应是：", o:[{x:'A',t:"直接找主管对峙讨要说法，甚至当晚更新简历"},{x:'B',t:"在私群里跟着大家吐槽公司抠门，叹气接受现实"},{x:'C',t:"哦只要没开除就行，反正我天天摸鱼这波不亏"}] },
+    { d:3, t:"连干四小时大脑变浆糊，电脑突然蓝屏且没保存，你会：", o:[{x:'A',t:"发出一声惨绝人寰的尖叫气到手抖"},{x:'B',t:"绝望闭眼祈祷软件有自动保存"},{x:'C',t:"平静按下重启键，正好有正当理由明天重做拎包下班"}] },
+
+    // 维度4：E vs P (28-36)
+    { d:4, t:"拿到一个周期为两周的新任务，你的时间规划通常是：", o:[{x:'A',t:"前13天刷B站找参考，第14天通宵爆肝创造奇迹"},{x:'B',t:"每天稳定推进一点不紧不慢做完"},{x:'C',t:"花三天夸张效率搞定主体，剩下11天明目张胆划水"}] },
+    { d:4, t:"临近重大项目上线/提交的“死亡之夜”，你的状态是：", o:[{x:'A',t:"红牛灌满手速飙升，觉得在悬崖边走钢丝棒极了"},{x:'B',t:"虽然很累但也在硬挺着检查遗漏希望别出大错"},{x:'C',t:"早就把提交的东西弄好了，端着茶杯看同事极限冲刺"}] },
+    { d:4, t:"面对工作软件里堆积如山的待办任务，你的处理方式是：", o:[{x:'A',t:"不到最后绝不点开，任由红点堆积享受被死线追逐的快感"},{x:'B',t:"按优先级每天做几个，但最讨厌的拖到最后"},{x:'C',t:"拆解得极其细碎疯狂享受提前划掉任务的爽感"}] },
+    { d:4, t:"如果让你负责组织一次部门团建/聚餐，你会：", o:[{x:'A',t:"提前一天晚上疯狂看点评订餐厅，主打惊险开盲盒"},{x:'B',t:"提前三天发个群投票少数服从多数"},{x:'C',t:"提前半个月把行程表、座位表全用Excel排好"}] },
+    { d:4, t:"对于写“本周周报/月报”这件事，你的操作是：", o:[{x:'A',t:"周五下午5:59在文档里疯狂敲字生编硬造"},{x:'B',t:"周五抽半小时回忆一下这周干了什么随便写写"},{x:'C',t:"周一开始每天写两行，周五直接发送一秒不多待"}] },
+    { d:4, t:"老板突然问那个常规需求大概什么时候能出，你会答：", o:[{x:'A',t:"今晚加个班，明天早上就能发你！(亡命徒)"},{x:'B',t:"大概需要两三天左右我尽量赶赶"},{x:'C',t:"这个牵扯面比较广至少需要一周排期(实际半天做完)"}] },
+    { d:4, t:"手机电量剩下多少的时候，你会开始焦虑找充电器？", o:[{x:'A',t:"1%伴随关机弹窗，依然觉得能再刷条短视频"},{x:'B',t:"20%看到电池变红有点慌"},{x:'C',t:"80%不插线就没安全感，抽屉常备满电充电宝"}] },
+    { d:4, t:"每天早上的通勤时间，你的状态更接近哪一种？", o:[{x:'A',t:"每天算准最后一分钟冲进电梯打卡上演生死时速"},{x:'B',t:"偶尔迟到，大部分时候能提前5-10分钟到公司"},{x:'C',t:"永远提前半小时到公司从容吃完早餐开启电脑"}] },
+    { d:4, t:"每年双十一/618或者抢演唱会门票，你的风格是：", o:[{x:'A',t:"绝对不提前做功课，享受零点疯狂拼手速的刺激"},{x:'B',t:"提前一两天挑好差不多满减了就买"},{x:'C',t:"提前半个月付好定金写脚本对比趋势绝不亏一分钱"}] }
+];
+
+// --- 结果图鉴数据 (泛职场通用版文案微调) ---
+const resultData = {
+    "OLRE": { n:"暴躁型对齐战神", d:"该物种生存极其依赖拉会和文档。发现实际产出与需求有偏差时瞬间红温，靠物理咆哮硬生生把项目推过及格线。", e:"带薪发呆禅师", p:"战损补锅机甲", dr:"速效救心丸", s:[95, 15, 80, 20, 5, 85] },
+    "SLCP": { n:"野生赛博水豚", d:"情绪极其稳定的容器。泰山崩于前而色不变，早已看透草台班子的本质，在自己的防空洞里储备了充足的带薪发呆时间。", e:"暴躁型对齐战神", p:"画饼大师", dr:"包浆的人体工学椅", s:[10, 99, 90, 100, 95, 100] },
+    "SVRE": { n:"五彩斑斓黑制造局长", d:"游走在理智边缘的狂徒。靠直觉和玄学工作，一旦被质疑专业度暴躁血脉觉醒，在极度愤怒和DDL刺激下产出大作。", e:"像素级对齐暴君", p:"扩音器文案", dr:"被捏碎的鼠标", s:[30, 5, 40, 85, 60, 70] },
+    "OVCP": { n:"职场泥鳅/端水大师", d:"办公室润滑剂。深谙生存哲学，用温和圆滑的话语将矛盾化解于无形。看似没硬核输出实则是谁也离不开的万金油。", e:"死心眼的财务", p:"所有人", dr:"掌握八卦的Excel", s:[80, 85, 100, 0, 99, 99] },
+    "SLRE": { n:"暗黑加班复仇者", d:"白天像尸体晚上像刺客。长期潜伏在底层的黑暗中导致极其暴躁。死线前用违背祖宗的黑魔法强行糊弄过关哪管洪水滔天。", e:"流程洁癖晚期", p:"背锅侠", dr:"脏话注释笔记", s:[20, 10, 70, 120, 10, 60] },
+    "OLCE": { n:"薛定谔的画饼大师", d:"掌握宏大叙事权。精美的PPT能在毫无资源的情况下向老板描绘出旷世蓝图。情绪稳定但在死线前饼可能变成幻觉。", e:"需求粉碎机", p:"赛博水豚", dr:"100页黑话PPT", s:[100, 75, 85, 0, 80, 90] },
+    "SVCE": { n:"玄学排雷背锅侠", d:"游走在崩溃边缘的守望者。面对毫无逻辑的偶发错误情绪稳定，每天在玄学边缘疯狂试探，背负所有不属于自己的罪孽。", e:"暗黑加班复仇者", p:"互相取暖的同行", dr:"锅王纯金勋章", s:[40, 80, 0, 60, 30, 50] },
+    "OVRE": { n:"灵感暴走型大喇叭", d:"职场文艺复兴狂徒。脑洞极大，半夜三更发狂想。如果有人质疑会立刻红温并长篇大论洗脑，交稿前不知会搞出什么。", e:"对齐战神", p:"制造局长", dr:"缓解偏头痛的布洛芬", s:[90, 25, 50, 70, 40, 75] },
+    "SLRP": { n:"流程洁癖晚期患者", d:"秩序守护神。极度厌恶临时方案和混乱结构。宁可延期也不许有人破坏流程，用充满鄙夷的冰冷眼神把你钉在耻辱柱上。", e:"暗黑加班复仇者", p:"带薪发呆禅师", dr:"《高效工作规范》", s:[70, 60, 95, 100, 50, 90] },
+    "OLCP": { n:"无情的需求粉碎机", d:"没有感情的审核机器。丧失情绪波动，只需祭出“逻辑漏洞、预算不够”大法就能粉碎一切不合理需求保全团队不加班。", e:"无(生态顶端)", p:"赛博水豚", dr:"驳回大印章", s:[85, 100, 90, 40, 85, 95] },
+    "SVRP": { n:"像素级对齐暴君", d:"拥有写轮眼的强迫症。差1个像素或半点格式错误就会狂躁。提前建立极其繁复的规范，任何人破坏都会遭到眼神制裁。", e:"赶进度的所有人", p:"流程洁癖晚期", dr:"标满红线的纠错文档", s:[50, 40, 60, 90, 20, 80] },
+    "OVCE": { n:"量子纠缠甩锅公关", d:"背锅抗性带师。出事故滑跪道歉极度依赖网感。平时佛系但在危机死线前能爆发惊人的危机处理(甩锅)能力化解无形。", e:"硬核甲方", p:"画饼大师", dr:"Ctrl+C/V腱鞘炎", s:[80, 90, 120, 50, 90, 100] }
+};
+const fallbackData = { n:"隐匿的未知大佬", d:"过于罕见的精神状态，系统无法精准定位，您大概率是一个极其神秘的扫地僧。", e:"未知", p:"未知", dr:"看不懂的高级笔记", s:[50,50,50,50,50,50] };
+
+// 状态管理
+let currentQ = 0;
+let userAnswers = []; // 记录用户的选择，用于返回上一题
+
+function startQuiz() {
+    document.getElementById('landing').classList.add('hidden');
+    document.getElementById('quiz').classList.remove('hidden');
+    renderQuestion('in-right');
+}
+
+// direction: 'in-right'(下一题飞入), 'in-left'(上一题飞回)
+function renderQuestion(direction = 'in-right') {
+    if (currentQ >= questions.length) { showLoading(); return; }
+    
+    // UI状态更新
+    document.getElementById('q-counter').innerText = `SYS.TEST [${String(currentQ+1).padStart(2,'0')}/36]`;
+    document.getElementById('progress-fill').style.width = `${(currentQ / 36) * 100}%`;
+    
+    let pbColor = 'var(--accent-green)';
+    if(currentQ > 25) pbColor = 'var(--accent-orange)';
+    if(currentQ > 32) pbColor = 'var(--accent-pink)';
+    document.getElementById('progress-fill').style.backgroundColor = pbColor;
+
+    // 返回按钮显隐逻辑
+    const backBtn = document.getElementById('btn-back');
+    if(currentQ > 0) backBtn.classList.add('visible');
+    else backBtn.classList.remove('visible');
+
+    const q = questions[currentQ];
+    const wrapper = document.getElementById('q-wrapper');
+    
+    // 渲染内容前，把wrapper推向进场起始位置，设为透明
+    wrapper.style.transition = 'none';
+    wrapper.style.opacity = '0';
+    wrapper.style.transform = direction === 'in-right' ? 'translateX(50px)' : 'translateX(-50px)';
+    
+    // 强制触发重绘
+    wrapper.offsetHeight;
+
+    // 更新内容
+    document.getElementById('q-text').innerText = q.t;
+    const optsContainer = document.getElementById('options-container');
+    optsContainer.innerHTML = '';
+    
+    q.o.forEach(opt => {
+        const btn = document.createElement('div');
+        btn.className = 'option';
+        btn.innerText = opt.t;
+        btn.onclick = () => handleAnswer(opt.x);
+        optsContainer.appendChild(btn);
+    });
+
+    // 开始进场动画
+    wrapper.style.transition = 'all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    wrapper.style.opacity = '1';
+    wrapper.style.transform = 'translateX(0)';
+}
+
+function handleAnswer(choice) {
+    userAnswers[currentQ] = choice; // 记录答案
+    
+    const wrapper = document.getElementById('q-wrapper');
+    // 出场动画 (向左滑出)
+    wrapper.style.opacity = '0';
+    wrapper.style.transform = 'translateX(-50px)';
+    
+    setTimeout(() => {
+        currentQ++;
+        renderQuestion('in-right');
+    }, 250);
+}
+
+function goBack() {
+    if (currentQ > 0) {
+        const wrapper = document.getElementById('q-wrapper');
+        // 出场动画 (向右滑出)
+        wrapper.style.opacity = '0';
+        wrapper.style.transform = 'translateX(50px)';
+        
+        setTimeout(() => {
+            currentQ--;
+            renderQuestion('in-left');
+        }, 250);
+    }
+}
+
+function showLoading() {
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('loading').classList.remove('hidden');
+    
+    const logs = [
+        "> 正在解析历史办公数据...", "> 提取理智残余中...", "> WARNING: 血压阈值异常...",
+        "> 正在对齐像素网格 [▓▓▓▓▓░░] 75%", "> 读取系统日志特征...", "> 正在匹配生态圈坐标..."
+    ];
+    let logIdx = 0;
+    const logBox = document.getElementById('log-box');
+    
+    const interval = setInterval(() => {
+        if(logIdx < logs.length) {
+            logBox.innerHTML += `<div>${logs[logIdx]}</div>`;
+            logIdx++;
+        } else {
+            clearInterval(interval);
+            setTimeout(calculateResult, 800);
+        }
+    }, 400);
+}
+
+function calculateResult() {
+    // 遍历用户的答案数组，统计分数
+    let scores = { 1:{A:0,C:0}, 2:{A:0,C:0}, 3:{A:0,C:0}, 4:{A:0,C:0} };
+    for(let i=0; i<userAnswers.length; i++){
+        let choice = userAnswers[i];
+        let dim = questions[i].d;
+        if(choice === 'A') scores[dim].A++;
+        if(choice === 'C') scores[dim].C++;
+    }
+
+    // 结算逻辑 (防平局，职场底色潜规则)
+    const dim1 = scores[1].A > scores[1].C ? 'O' : 'S'; // 平局默认S闭麦
+    const dim2 = scores[2].A > scores[2].C ? 'L' : 'V'; // 平局默认V玄学
+    const dim3 = scores[3].A > scores[3].C ? 'R' : 'C'; // 平局默认C水豚
+    const dim4 = scores[4].A > scores[4].C ? 'E' : 'P'; // 平局默认E极限
+    
+    const resCode = dim1 + dim2 + dim3 + dim4;
+    const result = resultData[resCode] || fallbackData;
+
+    // 渲染结果页
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('result').classList.remove('hidden');
+    
+    document.getElementById('r-code').innerText = `[ ${dim1}-${dim2}-${dim3}-${dim4} ]`;
+    document.getElementById('r-title').innerText = result.n || resultData[resCode].n;
+    document.getElementById('r-desc').innerText = result.d;
+    document.getElementById('r-enemy').innerText = result.e;
+    document.getElementById('r-partner').innerText = result.p;
+    document.getElementById('r-drop').innerText = result.dr;
+    
+    drawRadar(result.s || fallbackData.s);
+    
+    // 背景灯效跟随维度的情绪轴
+    if(dim3 === 'R') document.querySelector('.id-card').style.boxShadow = '0 10px 40px rgba(255, 0, 85, 0.2)';
+    if(dim3 === 'C') document.querySelector('.id-card').style.boxShadow = '0 10px 40px rgba(0, 255, 163, 0.2)';
+}
+
+function drawRadar(dataValues) {
+    const size = 260; const center = size/2; const radius = 90;
+    const labels = ['嘴炮输出', '理智残存', '甩锅抗性', '雕花能力', '摸鱼隐蔽', '职场存活'];
+    
+    let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+    
+    // 画网格线 (3层)
+    for(let level=1; level<=3; level++) {
+        let r = radius * (level/3);
+        let pts = '';
+        for(let i=0; i<6; i++) {
+            let ang = (Math.PI / 180) * (i * 60 - 90);
+            pts += `${center + r * Math.cos(ang)},${center + r * Math.sin(ang)} `;
+        }
+        svg += `<polygon points="${pts}" fill="none" stroke="#333" stroke-width="1"/>`;
+    }
+    
+    // 画轴线和文字
+    for(let i=0; i<6; i++) {
+        let ang = (Math.PI / 180) * (i * 60 - 90);
+        let x = center + radius * Math.cos(ang);
+        let y = center + radius * Math.sin(ang);
+        svg += `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="#333" stroke-width="1"/>`;
+        
+        let lx = center + (radius + 20) * Math.cos(ang);
+        let ly = center + (radius + 15) * Math.sin(ang);
+        let anchor = x > center + 10 ? 'start' : (x < center - 10 ? 'end' : 'middle');
+        svg += `<text x="${lx}" y="${ly}" fill="#888" font-size="10" font-family="monospace" text-anchor="${anchor}" alignment-baseline="middle">${labels[i]}</text>`;
+    }
+    
+    // 画数据面
+    let dataPts = '';
+    for(let i=0; i<6; i++) {
+        let val = dataValues[i] > 100 ? 100 : dataValues[i];
+        let ang = (Math.PI / 180) * (i * 60 - 90);
+        let r = radius * (val / 100);
+        dataPts += `${center + r * Math.cos(ang)},${center + r * Math.sin(ang)} `;
+    }
+    svg += `<polygon points="${dataPts}" fill="rgba(0, 255, 163, 0.3)" stroke="#00ffa3" stroke-width="2">
+              <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" />
+            </polygon>`;
+    svg += `</svg>`;
+    
+    document.getElementById('radar-container').innerHTML = svg;
+}
+</script>
+</body>
+</html>
